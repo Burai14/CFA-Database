@@ -1,15 +1,10 @@
 import tkinter as tk
 from tkinter import Label, Entry, Button, messagebox, ttk
 from tkcalendar import Calendar, DateEntry
-import psycopg2
 from datetime import datetime
+from database_operations import DatabaseOperations
 
 class DataCollectionApp:
-    DB_NAME = "Top Deck CFV"
-    DB_USER = "postgres"
-    DB_PASSWORD = "chromedokuro14"
-    DB_HOST = "localhost"
-    DB_PORT = "5432"
 
     def __init__(self, master):
         self.master = master
@@ -17,6 +12,7 @@ class DataCollectionApp:
 
         # Create form elements
         self.create_form_elements()
+        self.db_operations = DatabaseOperations()
 
     def create_form_elements(self):
         form_elements_config = [
@@ -125,7 +121,7 @@ class DataCollectionApp:
         # Get data from the GUI input fields
         player_id = self.entry_player_id.get()
         player_name = self.entry_player_name.get()
-        tournament_id = self.entry_tournament_event.get()
+        tournament_event = self.entry_tournament_event.get()
         tournament_format = self.combo_tournament_format.get()
         tournament_date = self.entry_tournament_date.get()
         deck_nation = self.combo_deck_nation.get()
@@ -136,55 +132,14 @@ class DataCollectionApp:
         # Validate input (you can add more validation as needed)
 
         # Connect to the PostgreSQL database
-        conn = self.connect_to_database()
-
-        # Check if a connection has been established
-        if conn is None:
-            messagebox.showerror("Error", "Database connection not established.")
-            return
-
-        # Create a cursor object to execute SQL queries
-        with conn.cursor() as cursor:
+        with self.db_operations.connect() as conn:
             try:
-                # Insert data into the table
-                cursor.execute(
-                    """INSERT INTO players_statistics ( 
-                        player_id,
-                        player_name,
-                        tournament_event,
-                        tournament_format,
-                        tournament_date,
-                        deck_nation,
-                        deck_clan,
-                        deck_subclan,
-                        tournament_ranking  
-                    ) VALUES (
-                        %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
-                    (player_id, player_name, tournament_id, tournament_format, tournament_date, deck_nation, deck_clan, deck_subclan, tournament_ranking)
+                self.db_operations.insert_data(
+                    conn, player_id, player_name, tournament_event,
+                    tournament_format, tournament_date, deck_nation,
+                    deck_clan, deck_subclan, tournament_ranking
                 )
-
-                # Commit the transaction
-                conn.commit()
-
                 messagebox.showinfo("Success", "Data inserted successfully!")
-
-                # Clear the form after successful submission
                 self.clear_form()
             except Exception as e:
                 messagebox.showerror("Error", f"Error inserting data: {e}")
-                conn.rollback()
-
-    def connect_to_database(self):
-        try:
-            # Connect to the PostgreSQL database
-            conn = psycopg2.connect(
-                dbname=self.DB_NAME,
-                user=self.DB_USER,
-                password=self.DB_PASSWORD,
-                host=self.DB_HOST,
-                port=self.DB_PORT
-            )
-            return conn
-        except psycopg2.Error as e:
-            messagebox.showerror("Database Error", f"Error connecting to the database: {e}")
-            return None
