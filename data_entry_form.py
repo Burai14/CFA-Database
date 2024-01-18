@@ -13,71 +13,43 @@ class DataCollectionApp:
         self.create_form_elements()
 
     def create_form_elements(self):
+        form_elements_config = [
+            {"label": "Player ID:", "type": Entry},
+            {"label": "Player Name:", "type": Entry},
+            {"label": "Tournament Event", "type": Entry},
+            {"label": "Tournament Format", "type": ttk.Combobox, "values": ["Standard", "V-Premium", "Premium"]},
+            {"label": "Tournament Date", "type": Entry},
+            {"label": "Deck Nation", "type": ttk.Combobox, "values": ["Keter Sanctuary", "Dragon Empire", "Brandt Gate", "Dark States", "Stoicheia", "Lyrical Monasterio"]},
+            {"label": "Deck Clan (if not standard format)", "type": Entry},
+            {"label": "Deck Subclan", "type": Entry},
+            {"label": "Ranking from tournament", "type": Entry},
+        ]
 
-        # Create form elements
-        label_player_id = Label(self.master, text="Player ID:")
-        label_player_id.grid(row=0, column=0)
-        self.entry_player_id = Entry(self.master)
-        self.entry_player_id.grid(row=0, column=1)
+        for i, element_config in enumerate(form_elements_config):
+            label_text = element_config["label"]
+            entry_type = element_config["type"]
 
-        label_player_name = Label(self.master, text="Player Name:")
-        label_player_name.grid(row=1, column=0)
-        self.entry_player_name = Entry(self.master)
-        self.entry_player_name.grid(row=1, column=1)
+            label = Label(self.master, text=label_text)
+            label.grid(row=i, column=0)
 
-        label_tournament_id = Label(self.master, text="Tournament Event")
-        label_tournament_id.grid(row=2, column=0)
-        self.entry_tournament_id = Entry(self.master)
-        self.entry_tournament_id.grid(row=2, column=1)
+            if entry_type == ttk.Combobox:
+                values = element_config.get("values", [])
+                entry = entry_type(self.master, values=values)
+                if label_text == "Deck Nation":
+                    self.combo_deck_nation = entry
+            else:
+                entry = entry_type(self.master)
+            
+            entry.grid(row=i, column=1)
 
-        label_tournament_format = Label(self.master, text="Tournament Format")
-        label_tournament_format.grid(row=3, column=0)
-        tournament_format_options = ["Standard", "V-Premium", "Premium"]
-        self.combo_tournament_format = ttk.Combobox(self.master, values=tournament_format_options)
-        self.combo_tournament_format.grid(row=3, column=1)
-        self.combo_tournament_format.bind("<<ComboboxSelected>>", self.update_second_dropdown)
+        button_submit = Button(self.master, text="Submit", command=self.insert_data)
+        button_submit.grid(row=len(form_elements_config), column=0, columnspan=2)
 
-        label_tournament_date = Label(self.master, text="Tournament Date")
-        label_tournament_date.grid(row=4, column=0)
-        self.entry_tournament_date = Entry(self.master)
-        self.entry_tournament_date.grid(row=4, column=1)
+        self.combo_tournament_format = next((e["type"](self.master, values=e.get("values", [])) for e in form_elements_config if e["label"] == "Tournament Format"), None)
+        if self.combo_tournament_format:
+            self.combo_tournament_format.grid(row=form_elements_config.index(next(e for e in form_elements_config if e["label"] == "Tournament Format")), column=1)
+            self.combo_tournament_format.bind("<<ComboboxSelected>>", self.update_second_dropdown)
 
-        calendar_button = Button(self.master, text="Select Date", command=self.show_calendar)
-        calendar_button.grid(row=4, column=2, columnspan=2)
-
-        label_deck_nation = Label(self.master, text="Deck Nation")
-        label_deck_nation.grid(row=5, column=0)
-        deck_nation_options = {
-            "Standard": ["Keter Sanctuary", "Dragon Empire", "Brandt Gate", "Dark States", "Stoicheia", "Lyrical Monasterio"],
-            "V-Premium": ["United Sanctuary", "Dragon Empire", "Star Gate", "Dark Zone", "Magallanica", "Zoo"],
-            "Premium": ["United Sanctuary", "Dragon Empire", "Star Gate", "Dark Zone", "Magallanica", "Zoo"],
-            }
-        default_options = deck_nation_options.get("Standard", [])
-        self.combo_deck_nation = ttk.Combobox(self.master, values=default_options)
-        self.combo_deck_nation.grid(row=5, column=1)
-
-        label_deck_clan = Label(self.master, text="Deck Clan (if not standard format)")
-        label_deck_clan.grid(row=6, column=0)
-        self.entry_deck_clan = Entry(self.master)
-        self.entry_deck_clan.grid(row=6, column=1)
-
-        label_deck_subclan = Label(self.master, text="Deck Subclan")
-        label_deck_subclan.grid(row=7, column=0)
-        self.entry_deck_subclan = Entry(self.master)
-        self.entry_deck_subclan.grid(row=7, column=1)
-
-        label_tournament_ranking = Label(self.master, text="Ranking from tournament")
-        label_tournament_ranking.grid(row=8, column=0)
-        self.entry_tournament_ranking = Entry(self.master)
-        self.entry_tournament_ranking.grid(row=8, column=1)
-
-
-
-        # Add more labels and entry fields
-        #  as needed
-
-        insert_button = Button(self.master, text="Submit", command=self.insert_data)
-        insert_button.grid(row=9, column=0, columnspan=2)
 
     def update_second_dropdown(self, event=None):
         deck_nation_options = {
