@@ -5,6 +5,12 @@ import psycopg2
 from datetime import datetime
 
 class DataCollectionApp:
+    DB_NAME = "Top Deck CFV"
+    DB_USER = "postgres"
+    DB_PASSWORD = "chromedokuro14"
+    DB_HOST = "localhost"
+    DB_PORT = "5432"
+
     def __init__(self, master):
         self.master = master
         master.title("Data Collection Form")
@@ -14,48 +20,71 @@ class DataCollectionApp:
 
     def create_form_elements(self):
         form_elements_config = [
-            {"label": "Player ID:", "type": Entry},
-            {"label": "Player Name:", "type": Entry},
+            {"label": "Player ID", "type": Entry},
+            {"label": "Player Name", "type": Entry},
             {"label": "Tournament Event", "type": Entry},
             {"label": "Tournament Format", "type": ttk.Combobox, "values": ["Standard", "V-Premium", "Premium"]},
             {"label": "Tournament Date", "type": Entry},
             {"label": "Deck Nation", "type": ttk.Combobox, "values": ["Keter Sanctuary", "Dragon Empire", "Brandt Gate", "Dark States", "Stoicheia", "Lyrical Monasterio"]},
-            {"label": "Deck Clan (if not standard format)", "type": Entry},
+            {"label": "Deck Clan", "type": Entry},
             {"label": "Deck Subclan", "type": Entry},
-            {"label": "Ranking from tournament", "type": Entry},
+            {"label": "Tournament Ranking", "type": Entry},
         ]
 
+        self.create_form_labels_and_entries(form_elements_config)
+        self.create_submit_button(form_elements_config)
+
+    def create_form_labels_and_entries(self, form_elements_config):
         for i, element_config in enumerate(form_elements_config):
             label_text = element_config["label"]
             entry_type = element_config["type"]
+            kwargs = {key: element_config[key] for key in element_config.keys() if key not in ["label", "type"]}
+
 
             label = Label(self.master, text=label_text)
             label.grid(row=i, column=0)
 
             if entry_type == ttk.Combobox:
                 values = element_config.get("values", [])
-                entry = entry_type(self.master, values=values)
+                entry = entry_type(self.master, **kwargs)
+                entry["values"] = values
                 if label_text == "Deck Nation":
                     self.combo_deck_nation = entry
+            elif label_text == "Tournament Date":
+                entry = Entry(self.master, **kwargs)
+                self.entry_tournament_date = entry
+                entry.grid(row=i, column=1)
+                button_select_date = Button(self.master, text="Select Date", command=self.show_calendar)
+                button_select_date.grid(row=i, column=2)
             else:
-                entry = entry_type(self.master)
+                entry = entry_type(self.master, **kwargs)
+
+            setattr(self, f"entry_{label_text.lower().replace(' ', '_')}", entry)
+            print(f"Attribute set: entry_{label_text.lower().replace(' ', '_')}")
+
             
             entry.grid(row=i, column=1)
 
+    def create_submit_button(self, form_elements_config):
         button_submit = Button(self.master, text="Submit", command=self.insert_data)
         button_submit.grid(row=len(form_elements_config), column=0, columnspan=2)
 
-        self.combo_tournament_format = next((e["type"](self.master, values=e.get("values", [])) for e in form_elements_config if e["label"] == "Tournament Format"), None)
+        self.combo_tournament_format = self.get_combobox(form_elements_config, "Tournament Format")
         if self.combo_tournament_format:
-            self.combo_tournament_format.grid(row=form_elements_config.index(next(e for e in form_elements_config if e["label"] == "Tournament Format")), column=1)
+            self.combo_tournament_format.grid(row=form_elements_config.index(self.get_element_config(form_elements_config, "Tournament Format")), column=1)
             self.combo_tournament_format.bind("<<ComboboxSelected>>", self.update_second_dropdown)
 
+    def get_combobox(self, form_elements_config, label):
+        return next((e["type"](self.master, values=e.get("values", [])) for e in form_elements_config if e["label"] == label), None)
+    
+    def get_element_config(self, form_elements_config, label):
+        return next(e for e in form_elements_config if e["label"] == label)
 
     def update_second_dropdown(self, event=None):
         deck_nation_options = {
-        "Standard": ["Keter Sanctuary", "Dragon Empire", "Brandt Gate", "Dark States", "Stoicheia", "Lyrical Monasterio"],
-        "V-Premium": ["United Sanctuary", "Dragon Empire", "Star Gate", "Dark Zone", "Magallanica", "Zoo"],
-        "Premium": ["United Sanctuary", "Dragon Empire", "Star Gate", "Dark Zone", "Magallanica", "Zoo"],
+            "Standard": ["Keter Sanctuary", "Dragon Empire", "Brandt Gate", "Dark States", "Stoicheia", "Lyrical Monasterio"],
+            "V-Premium": ["United Sanctuary", "Dragon Empire", "Star Gate", "Dark Zone", "Magallanica", "Zoo"],
+            "Premium": ["United Sanctuary", "Dragon Empire", "Star Gate", "Dark Zone", "Magallanica", "Zoo"],
         }
 
         # Get the selected value from the first dropdown
@@ -81,10 +110,10 @@ class DataCollectionApp:
         self.top.destroy()  # Close the calendar window after selecting a date
 
     def clear_form(self):
-    # Clear all entry fields
+        # Clear all entry fields
         self.entry_player_id.delete(0, tk.END)
         self.entry_player_name.delete(0, tk.END)
-        self.entry_tournament_id.delete(0, tk.END)
+        self.entry_tournament_event.delete(0, tk.END)
         self.combo_tournament_format.set("")  # Clear the selection in the combo box
         self.entry_tournament_date.delete(0, tk.END)
         self.combo_deck_nation.set("")
@@ -96,7 +125,7 @@ class DataCollectionApp:
         # Get data from the GUI input fields
         player_id = self.entry_player_id.get()
         player_name = self.entry_player_name.get()
-        tournament_id = self.entry_tournament_id.get()
+        tournament_id = self.entry_tournament_event.get()
         tournament_format = self.combo_tournament_format.get()
         tournament_date = self.entry_tournament_date.get()
         deck_nation = self.combo_deck_nation.get()
@@ -107,13 +136,7 @@ class DataCollectionApp:
         # Validate input (you can add more validation as needed)
 
         # Connect to the PostgreSQL database
-        conn = psycopg2.connect(
-            dbname="Top Deck CFV",
-            user="postgres",
-            password="chromedokuro14",
-            host="localhost",
-            port="5432"
-        )
+        conn = self.connect_to_database()
 
         # Check if a connection has been established
         if conn is None:
@@ -121,50 +144,45 @@ class DataCollectionApp:
             return
 
         # Create a cursor object to execute SQL queries
-        cursor = conn.cursor()
+        with conn.cursor() as cursor:
+            try:
+                # Insert data into the table
+                cursor.execute(
+                    """INSERT INTO players_statistics ( 
+                        player_id,
+                        player_name,
+                        tournament_event,
+                        tournament_format,
+                        tournament_date,
+                        deck_nation,
+                        deck_clan,
+                        deck_subclan,
+                        tournament_ranking  
+                    ) VALUES (
+                        %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
+                    (player_id, player_name, tournament_id, tournament_format, tournament_date, deck_nation, deck_clan, deck_subclan, tournament_ranking)
+                )
 
-        try:
-            # Insert data into the table
-            cursor.execute(
-                """INSERT INTO players_statistics ( 
-                    player_id,
-                    player_name,
-                    tournament_id,
-                    tournament_format,
-                    tournament_date,
-                    deck_nation,
-                    deck_clan,
-                    deck_subclan,
-                    tournament_ranking  
-                ) VALUES (
-                    %s, %s, %s, %s, %s, %s, %s, %s, %s)""",
-                (player_id, player_name, tournament_id, tournament_format, tournament_date, deck_nation, deck_clan, deck_subclan, tournament_ranking)
-            )
+                # Commit the transaction
+                conn.commit()
 
-            # Commit the transaction
-            conn.commit()
+                messagebox.showinfo("Success", "Data inserted successfully!")
 
-            messagebox.showinfo("Success", "Data inserted successfully!")
-
-            # Clear the form after successful submission
-            self.clear_form()
-        except Exception as e:
-            messagebox.showerror("Error", f"Error inserting data: {e}")
-            conn.rollback()
-        finally:
-            # Close the cursor and connection
-            cursor.close()
-            conn.close()
+                # Clear the form after successful submission
+                self.clear_form()
+            except Exception as e:
+                messagebox.showerror("Error", f"Error inserting data: {e}")
+                conn.rollback()
 
     def connect_to_database(self):
         try:
             # Connect to the PostgreSQL database
             conn = psycopg2.connect(
-                dbname="Top Deck CFV",
-                user="postgres",
-                password="chromedokuro14",
-                host="localhost",
-                port="5432"
+                dbname=self.DB_NAME,
+                user=self.DB_USER,
+                password=self.DB_PASSWORD,
+                host=self.DB_HOST,
+                port=self.DB_PORT
             )
             return conn
         except psycopg2.Error as e:
