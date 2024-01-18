@@ -17,52 +17,60 @@ class DataCollectionApp:
         # Create form elements
         label_player_id = Label(self.master, text="Player ID:")
         label_player_id.grid(row=0, column=0)
-        entry_player_id = Entry(self.master)
-        entry_player_id.grid(row=0, column=1)
+        self.entry_player_id = Entry(self.master)
+        self.entry_player_id.grid(row=0, column=1)
 
         label_player_name = Label(self.master, text="Player Name:")
         label_player_name.grid(row=1, column=0)
-        entry_player_name = Entry(self.master)
-        entry_player_name.grid(row=1, column=1)
+        self.entry_player_name = Entry(self.master)
+        self.entry_player_name.grid(row=1, column=1)
 
         label_tournament_id = Label(self.master, text="Tournament Event")
         label_tournament_id.grid(row=2, column=0)
-        entry_tournament_id = Entry(self.master)
-        entry_tournament_id.grid(row=2, column=1)
+        self.entry_tournament_id = Entry(self.master)
+        self.entry_tournament_id.grid(row=2, column=1)
 
         label_tournament_format = Label(self.master, text="Tournament Format")
         label_tournament_format.grid(row=3, column=0)
         tournament_format_options = ["Standard", "V-Premium", "Premium"]
-        combo_tournament_format = ttk.Combobox(self.master, values=tournament_format_options)
-        combo_tournament_format.grid(row=3, column=1)
+        self.combo_tournament_format = ttk.Combobox(self.master, values=tournament_format_options)
+        self.combo_tournament_format.grid(row=3, column=1)
+        self.combo_tournament_format.bind("<<ComboboxSelected>>", self.update_second_dropdown)
 
         label_tournament_date = Label(self.master, text="Tournament Date")
         label_tournament_date.grid(row=4, column=0)
-        entry_tournament_date = Entry(self.master)
-        entry_tournament_date.grid(row=4, column=1)
+        self.entry_tournament_date = Entry(self.master)
+        self.entry_tournament_date.grid(row=4, column=1)
 
         calendar_button = Button(self.master, text="Select Date", command=self.show_calendar)
         calendar_button.grid(row=4, column=2, columnspan=2)
 
         label_deck_nation = Label(self.master, text="Deck Nation")
         label_deck_nation.grid(row=5, column=0)
-        entry_deck_nation = Entry(self.master)
-        entry_deck_nation.grid(row=5, column=1)
+        deck_nation_options = {
+            "Standard": ["Keter Sanctuary", "Dragon Empire", "Brandt Gate", "Dark States", "Stoicheia", "Lyrical Monasterio"],
+            "V-Premium": ["United Sanctuary", "Dragon Empire", "Star Gate", "Dark Zone", "Magallanica", "Zoo"],
+            "Premium": ["United Sanctuary", "Dragon Empire", "Star Gate", "Dark Zone", "Magallanica", "Zoo"],
+            }
+        default_options = deck_nation_options.get("Standard", [])
+        self.combo_deck_nation = ttk.Combobox(self.master, values=default_options)
+        self.combo_deck_nation.grid(row=5, column=1)
 
         label_deck_clan = Label(self.master, text="Deck Clan (if not standard format)")
         label_deck_clan.grid(row=6, column=0)
-        entry_deck_clan = Entry(self.master)
-        entry_deck_clan.grid(row=6, column=1)
+        self.entry_deck_clan = Entry(self.master)
+        self.entry_deck_clan.grid(row=6, column=1)
 
         label_deck_subclan = Label(self.master, text="Deck Subclan")
         label_deck_subclan.grid(row=7, column=0)
-        entry_deck_subclan = Entry(self.master)
-        entry_deck_subclan.grid(row=7, column=1)
+        self.entry_deck_subclan = Entry(self.master)
+        self.entry_deck_subclan.grid(row=7, column=1)
 
         label_tournament_ranking = Label(self.master, text="Ranking from tournament")
         label_tournament_ranking.grid(row=8, column=0)
-        entry_tournament_ranking = Entry(self.master)
-        entry_tournament_ranking.grid(row=8, column=1)
+        self.entry_tournament_ranking = Entry(self.master)
+        self.entry_tournament_ranking.grid(row=8, column=1)
+
 
 
         # Add more labels and entry fields
@@ -71,11 +79,27 @@ class DataCollectionApp:
         insert_button = Button(self.master, text="Submit", command=self.insert_data)
         insert_button.grid(row=9, column=0, columnspan=2)
 
+    def update_second_dropdown(self, event=None):
+        deck_nation_options = {
+        "Standard": ["Keter Sanctuary", "Dragon Empire", "Brandt Gate", "Dark States", "Stoicheia", "Lyrical Monasterio"],
+        "V-Premium": ["United Sanctuary", "Dragon Empire", "Star Gate", "Dark Zone", "Magallanica", "Zoo"],
+        "Premium": ["United Sanctuary", "Dragon Empire", "Star Gate", "Dark Zone", "Magallanica", "Zoo"],
+        }
+
+        # Get the selected value from the first dropdown
+        selected_value = self.combo_tournament_format.get()
+
+        # Get the corresponding deck clan options from the dictionary
+        deck_clan_options = deck_nation_options.get(selected_value, [])
+
+        # Update the options of the second dropdown
+        self.combo_deck_nation["values"] = deck_clan_options
+
     def show_calendar(self):
-        top = tk.Toplevel(self.master)
-        cal = DateEntry(top, width=12, background='darkblue', foreground='white', borderwidth=2, year=datetime.now().year, month=datetime.now().month, day=datetime.now().day)
-        cal.grid(row=0, column=0, padx=10, pady=10)
-        select_button = Button(top, text="Select Date", command=self.on_date_selected)
+        self.top = tk.Toplevel(self.master)
+        self.cal = DateEntry(self.top, width=12, background='darkblue', foreground='white', borderwidth=2, year=datetime.now().year, month=datetime.now().month, day=datetime.now().day)
+        self.cal.grid(row=0, column=0, padx=10, pady=10)
+        select_button = Button(self.top, text="Select Date", command=self.on_date_selected)
         select_button.grid(row=1, column=0)
 
     def on_date_selected(self):
@@ -91,7 +115,7 @@ class DataCollectionApp:
         self.entry_tournament_id.delete(0, tk.END)
         self.combo_tournament_format.set("")  # Clear the selection in the combo box
         self.entry_tournament_date.delete(0, tk.END)
-        self.entry_deck_nation.delete(0, tk.END)
+        self.combo_deck_nation.set("")
         self.entry_deck_clan.delete(0, tk.END)
         self.entry_deck_subclan.delete(0, tk.END)
         self.entry_tournament_ranking.delete(0, tk.END)
@@ -103,7 +127,7 @@ class DataCollectionApp:
         tournament_id = self.entry_tournament_id.get()
         tournament_format = self.combo_tournament_format.get()
         tournament_date = self.entry_tournament_date.get()
-        deck_nation = self.entry_deck_nation.get()
+        deck_nation = self.combo_deck_nation.get()
         deck_clan = self.entry_deck_clan.get()
         deck_subclan = self.entry_deck_subclan.get()
         tournament_ranking = self.entry_tournament_ranking.get()
