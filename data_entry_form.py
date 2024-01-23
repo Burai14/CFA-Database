@@ -15,6 +15,7 @@ class DataCollectionApp:
         self.db_operations = DatabaseOperations()
 
     def create_form_elements(self):
+        #form elements
         form_elements_config = [
             {"label": "Player ID", "type": Entry},
             {"label": "Player Name", "type": Entry},
@@ -22,7 +23,7 @@ class DataCollectionApp:
             {"label": "Tournament Format", "type": ttk.Combobox, "values": ["Standard", "V-Premium", "Premium"]},
             {"label": "Tournament Date", "type": Entry},
             {"label": "Deck Nation", "type": ttk.Combobox, "values": ["Keter Sanctuary", "Dragon Empire", "Brandt Gate", "Dark States", "Stoicheia", "Lyrical Monasterio"]},
-            {"label": "Deck Clan", "type": Entry},
+            {"label": "Deck Clan", "type": ttk.Combobox, "values": ["None"]},
             {"label": "Deck Subclan", "type": Entry},
             {"label": "Tournament Ranking", "type": Entry},
         ]
@@ -31,11 +32,11 @@ class DataCollectionApp:
         self.create_submit_button(form_elements_config)
 
     def create_form_labels_and_entries(self, form_elements_config):
+        #loop so that all labels will be shown on the form
         for i, element_config in enumerate(form_elements_config):
             label_text = element_config["label"]
             entry_type = element_config["type"]
             kwargs = {key: element_config[key] for key in element_config.keys() if key not in ["label", "type"]}
-
 
             label = Label(self.master, text=label_text)
             label.grid(row=i, column=0)
@@ -46,18 +47,21 @@ class DataCollectionApp:
                 entry["values"] = values
                 if label_text == "Deck Nation":
                     self.combo_deck_nation = entry
+                if label_text == "Deck Clan":
+                    self.combo_deck_clan = entry
             elif label_text == "Tournament Date":
                 entry = Entry(self.master, **kwargs)
                 self.entry_tournament_date = entry
                 entry.grid(row=i, column=1)
+                entry.insert(0, "YYYY-MM-DD")
+                entry["state"] = "disabled"
                 button_select_date = Button(self.master, text="Select Date", command=self.show_calendar)
-                button_select_date.grid(row=i, column=2)
+                button_select_date.grid(row=i, column=2)  
             else:
                 entry = entry_type(self.master, **kwargs)
 
             setattr(self, f"entry_{label_text.lower().replace(' ', '_')}", entry)
-            print(f"Attribute set: entry_{label_text.lower().replace(' ', '_')}")
-
+            #print(f"Attribute set: entry_{label_text.lower().replace(' ', '_')}")
             
             entry.grid(row=i, column=1)
 
@@ -69,6 +73,7 @@ class DataCollectionApp:
         if self.combo_tournament_format:
             self.combo_tournament_format.grid(row=form_elements_config.index(self.get_element_config(form_elements_config, "Tournament Format")), column=1)
             self.combo_tournament_format.bind("<<ComboboxSelected>>", self.update_second_dropdown)
+            self.combo_deck_nation.bind("<<ComboboxSelected>>", self.update_third_dropdown)       
 
     def get_combobox(self, form_elements_config, label):
         return next((e["type"](self.master, values=e.get("values", [])) for e in form_elements_config if e["label"] == label), None)
@@ -87,10 +92,37 @@ class DataCollectionApp:
         selected_value = self.combo_tournament_format.get()
 
         # Get the corresponding deck clan options from the dictionary
-        deck_clan_options = deck_nation_options.get(selected_value, [])
+        select_deck_nation_options = deck_nation_options.get(selected_value, [])
 
         # Update the options of the second dropdown
-        self.combo_deck_nation["values"] = deck_clan_options
+        self.combo_deck_nation["values"] = select_deck_nation_options
+
+        self.combo_deck_nation.set("")
+
+        if selected_value == "Standard":
+            self.combo_deck_clan.set("")
+            self.combo_deck_clan["state"] = "disabled"
+        else:
+            self.combo_deck_clan.set("")
+            self.combo_deck_clan["state"] = "normal"
+
+    def update_third_dropdown(self, event=None):
+        deck_clan_options = {
+            "United Sanctuary": ["Angel Feather", "Genesis", "Gold Paladin", "Oracle Think Tank", "Royal Paladin"],
+            "Dragon Empire": ["Kagero", "Murakumo", "Narukami", "Nubatama", "Tachikaze"],
+            "Star Gate": ["Dimentional Police", "Nova Grappler", "Link Joker"],
+            "Dark Zone": ["Dark Irregular", "Gear Chronicle", "Pale Moon", "Spike Brothers"],
+            "Magallanica": ["Aqua Force", "Bermuda Triangle", "Granblue"],
+            "Zoo": ["Great Nature", "Megacolony", "Neo Nectar"]
+        }
+
+        selected_value = self.combo_deck_nation.get()
+
+        select_deck_clan_options = deck_clan_options.get(selected_value, [])
+
+        self.combo_deck_clan["values"] = select_deck_clan_options
+
+        self.combo_deck_clan.set("")
 
     def show_calendar(self):
         self.top = tk.Toplevel(self.master)
@@ -98,11 +130,13 @@ class DataCollectionApp:
         self.cal.grid(row=0, column=0, padx=10, pady=10)
         select_button = Button(self.top, text="Select Date", command=self.on_date_selected)
         select_button.grid(row=1, column=0)
+        self.entry_tournament_date["state"] = "normal"
 
     def on_date_selected(self):
         date = self.cal.get_date()
         self.entry_tournament_date.delete(0, tk.END)
         self.entry_tournament_date.insert(0, date.strftime('%Y-%m-%d'))
+        self.entry_tournament_date["state"] = "disabled"
         self.top.destroy()  # Close the calendar window after selecting a date
 
     def clear_form(self):
@@ -113,7 +147,7 @@ class DataCollectionApp:
         self.combo_tournament_format.set("")  # Clear the selection in the combo box
         self.entry_tournament_date.delete(0, tk.END)
         self.combo_deck_nation.set("")
-        self.entry_deck_clan.delete(0, tk.END)
+        self.combo_deck_clan.set("")
         self.entry_deck_subclan.delete(0, tk.END)
         self.entry_tournament_ranking.delete(0, tk.END)
 
@@ -125,7 +159,7 @@ class DataCollectionApp:
         tournament_format = self.combo_tournament_format.get()
         tournament_date = self.entry_tournament_date.get()
         deck_nation = self.combo_deck_nation.get()
-        deck_clan = self.entry_deck_clan.get()
+        deck_clan = self.combo_deck_clan.get()
         deck_subclan = self.entry_deck_subclan.get()
         tournament_ranking = self.entry_tournament_ranking.get()
 
